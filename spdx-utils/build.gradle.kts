@@ -59,17 +59,6 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 }
 
-val importScanCodeLicenseTexts by tasks.registering(SvnExport::class) {
-    description = "Imports license texts from the ScanCode repository."
-    group = "SPDX"
-
-    val versionWithoutHyphen = scancodeVersion.replace("-", "")
-    svnUrl = "https://github.com/nexB/scancode-toolkit/tags/v$versionWithoutHyphen/src/licensedcode/data/licenses"
-    targetDir = "$buildDir/SvnExport/licenses/scancode-toolkit"
-
-    outputs.dir(targetDir)
-}
-
 val importSpdxLicenseTexts by tasks.registering(SvnExport::class) {
     description = "Imports license texts from the SPDX repository."
     group = "SPDX"
@@ -290,53 +279,6 @@ fun generateLicenseTextResources(description: String, ids: Map<String, LicenseMe
                 break
             } else {
                 throw GradleException("Failed to determine $description text for '$id' from any of $candidates.")
-            }
-        }
-    }
-}
-
-val generateLicenseRefTextResources by tasks.registering {
-    description = "Generates the LicenseRef text resources."
-    group = "SPDX"
-
-    dependsOn(importScanCodeLicenseTexts)
-    finalizedBy("cleanImportScanCodeLicenseTexts")
-
-    doLast {
-        val licensesDir = file("$buildDir/SvnExport/licenses/scancode-toolkit")
-
-        val resourcesDir = file("src/main/resources/licenserefs").apply {
-            if (isDirectory && !deleteRecursively()) {
-                throw GradleException("Failed to delete the existing '$this' directory.")
-            }
-            mkdirs()
-        }
-
-        licensesDir.walk().maxDepth(1).filter {
-            it.isFile && it.extension == "yml" && !it.nameWithoutExtension.endsWith("-exception")
-        }.forEach { file ->
-            val isSpdxLicense = file.readLines().any {
-                it.startsWith("spdx_license_key: ") && !it.contains("LicenseRef-")
-            }
-
-            if (!isSpdxLicense) {
-                // The base name of a ScanCode license YML file matches the ScanCode-internal license key.
-                val baseName = file.nameWithoutExtension
-                val licenseFile = licensesDir.resolve("$baseName.LICENSE")
-                if (licenseFile.isFile) {
-                    val lines = licenseFile.readLines().map { it.trimEnd() }.asReversed().dropWhile { it.isEmpty() }
-                        .asReversed().dropWhile { it.isEmpty() }
-
-                    // Underscores are not allowed in SPDX 'LicenseRef-*' identifiers, so turn them into dashes.
-                    val normalizedBaseName = baseName.replace('_', '-')
-
-                    // Use a "namespaced" LicenseRef ID string as the file name, similar to ScanCode itself does for
-                    // SPDX output formats, see https://github.com/nexB/scancode-toolkit/pull/1307.
-                    val resourceFile = resourcesDir.resolve("LicenseRef-scancode-$normalizedBaseName")
-                    resourceFile.writeText(lines.joinToString("\n", postfix = "\n"))
-                } else {
-                    logger.warn("No license text found for license '$baseName'.")
-                }
             }
         }
     }
