@@ -67,6 +67,7 @@ import org.ossreviewtoolkit.reporter.DefaultLicenseTextProvider
 import org.ossreviewtoolkit.reporter.HowToFixTextProvider
 import org.ossreviewtoolkit.reporter.Reporter
 import org.ossreviewtoolkit.reporter.ReporterInput
+import org.ossreviewtoolkit.reporter.utils.getScanCodeLicenseTextsDir
 import org.ossreviewtoolkit.utils.ORT_COPYRIGHT_GARBAGE_FILENAME
 import org.ossreviewtoolkit.utils.ORT_CUSTOM_LICENSE_TEXTS_DIRNAME
 import org.ossreviewtoolkit.utils.ORT_HOW_TO_FIX_TEXT_PROVIDER_FILENAME
@@ -216,7 +217,10 @@ class ReporterCommand : CliktCommand(
         resolutionProvider.add(ortResult.getResolutions())
         resolutionsFile.takeIf { it.isFile }?.readValue<Resolutions>()?.let { resolutionProvider.add(it) }
 
-        val licenseTextDirectories = listOfNotNull(customLicenseTextsDir.takeIf { it.isDirectory })
+        val licenseTextDirectories = listOfNotNull(
+            customLicenseTextsDir.takeIf { it.isDirectory },
+            getScanCodeLicenseTextsDir()
+        )
 
         val copyrightGarbage = copyrightGarbageFile.takeIf { it.isFile }?.readValue<CopyrightGarbage>().orEmpty()
 
@@ -294,8 +298,10 @@ class ReporterCommand : CliktCommand(
         }
 
         val successCount = reportFormats.size - failureCount
-        println("Created $successCount of ${reportFormats.size} report(s) in " +
-                "${reportDurationMap.duration.inWholeSeconds}s.")
+        println(
+            "Created $successCount of ${reportFormats.size} report(s) in " +
+                    "${reportDurationMap.duration.inWholeSeconds}s."
+        )
 
         if (failureCount > 0) throw ProgramResult(2)
     }
