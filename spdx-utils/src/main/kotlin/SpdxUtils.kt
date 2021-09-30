@@ -121,7 +121,7 @@ fun calculatePackageVerificationCode(directory: File): String {
     }
 
     val sortedExcludes = spdxFiles.map { "./${it.relativeTo(directory).invariantSeparatorsPath}" }
-            .sortedWith(PATH_STRING_COMPARATOR)
+        .sortedWith(PATH_STRING_COMPARATOR)
 
     return calculatePackageVerificationCode(filteredFiles, sortedExcludes)
 }
@@ -169,4 +169,11 @@ private fun getLicenseTextResource(id: String): URL? =
     object {}.javaClass.getResource("/licenserefs/$id")
 
 private fun getLicenseTextFile(id: String, dir: File): File? =
-    dir.resolve(id).takeIf { it.isFile }
+    sequenceOf(
+        id,
+        id.removePrefix("LicenseRef-"),
+        id.replaceFirst(Regex("LicenseRef-\\w*-"), ""),
+        "${id.replaceFirst(Regex("LicenseRef-\\w*-"), "")}.LICENSE"
+    ).mapNotNull { filename ->
+        dir.resolve(filename).takeIf { it.isFile }
+    }.firstOrNull()
