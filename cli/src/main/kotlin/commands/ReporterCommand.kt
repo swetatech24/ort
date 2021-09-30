@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017-2019 HERE Europe B.V.
+ * Copyright (C) 2021 Bosch.IO GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -215,6 +216,8 @@ class ReporterCommand : CliktCommand(
         resolutionProvider.add(ortResult.getResolutions())
         resolutionsFile.takeIf { it.isFile }?.readValue<Resolutions>()?.let { resolutionProvider.add(it) }
 
+        val licenseTextDirectories = listOfNotNull(customLicenseTextsDir.takeIf { it.isDirectory })
+
         val copyrightGarbage = copyrightGarbageFile.takeIf { it.isFile }?.readValue<CopyrightGarbage>().orEmpty()
 
         val packageConfigurationProvider = packageConfigurationOption.createProvider()
@@ -242,7 +245,7 @@ class ReporterCommand : CliktCommand(
             globalOptionsForSubcommands.config,
             packageConfigurationProvider,
             resolutionProvider,
-            DefaultLicenseTextProvider(customLicenseTextsDir.takeIf { it.isDirectory }),
+            DefaultLicenseTextProvider(licenseTextDirectories),
             copyrightGarbage,
             licenseInfoResolver,
             licenseClassifications,
