@@ -76,20 +76,35 @@ data class GlobalOptions(
 )
 
 data class SeverityStats(
-    val counts: Map<Severity, Int>
+    val resolvedCounts: Map<Severity, Int>,
+    val unresolvedCounts: Map<Severity, Int>
 ) {
     companion object {
-        fun createFromIssues(issues: Collection<OrtIssue>): SeverityStats =
-            SeverityStats(issues.groupingBy { it.severity }.eachCount())
+        fun createFromIssues(
+            resolvedIssues: Collection<OrtIssue>,
+            unresolvedIssues: Collection<OrtIssue>
+        ): SeverityStats =
+            SeverityStats(
+                resolvedCounts = resolvedIssues.groupingBy { it.severity }.eachCount(),
+                unresolvedCounts = unresolvedIssues.groupingBy { it.severity }.eachCount()
+            )
 
-        fun createFromRuleViolations(ruleViolations: Collection<RuleViolation>): SeverityStats =
-            SeverityStats(ruleViolations.groupingBy { it.severity }.eachCount())
+        fun createFromRuleViolations(
+            resolvedRuleViolations: Collection<RuleViolation>,
+            unresolvedRuleViolations: Collection<RuleViolation>
+        ): SeverityStats =
+            SeverityStats(
+                resolvedCounts = resolvedRuleViolations.groupingBy { it.severity }.eachCount(),
+                unresolvedCounts = unresolvedRuleViolations.groupingBy { it.severity }.eachCount()
+            )
     }
 
-    fun getSeverityCount(severity: Severity) = counts.getOrDefault(severity, 0)
+    fun getResolvedCount(severity: Severity) = resolvedCounts.getOrDefault(severity, 0)
+
+    fun getUnresolvedCount(severity: Severity) = unresolvedCounts.getOrDefault(severity, 0)
 
     fun countSevereIssues(threshold: Severity) =
-        counts.entries.sumOf { (severity, count) -> if (severity >= threshold) count else 0 }
+        unresolvedCounts.entries.sumOf { (severity, count) -> if (severity >= threshold) count else 0 }
 }
 
 /**
@@ -97,11 +112,23 @@ data class SeverityStats(
  * [threshold], print an according note and throw a ProgramResult exception with [severeStatusCode].
  */
 fun concludeSeverityStats(stats: SeverityStats, threshold: Severity, severeStatusCode: Int) {
-    val hintCount = stats.getSeverityCount(Severity.HINT)
-    val warningCount = stats.getSeverityCount(Severity.WARNING)
-    val errorCount = stats.getSeverityCount(Severity.ERROR)
+    val resolvedHintCount = stats.getResolvedCount(Severity.HINT)
+    val resolvedWarningCount = stats.getResolvedCount(Severity.WARNING)
+    val resolvedErrorCount = stats.getResolvedCount(Severity.ERROR)
 
-    println("Found $errorCount error(s), $warningCount warning(s), $hintCount hint(s).")
+    println(
+        "Found $resolvedErrorCount resolved error(s), $resolvedWarningCount resolved warning(s), " +
+                "$resolvedHintCount resolved hint(s)."
+    )
+
+    val unresolvedHintCount = stats.getUnresolvedCount(Severity.HINT)
+    val unresolvedWarningCount = stats.getUnresolvedCount(Severity.WARNING)
+    val unresolvedErrorCount = stats.getUnresolvedCount(Severity.ERROR)
+
+    println(
+        "Found $unresolvedErrorCount unresolved error(s), $unresolvedWarningCount unresolved warning(s), " +
+                "$unresolvedHintCount unresolved hint(s)."
+    )
 
     val severeIssueCount = stats.countSevereIssues(threshold)
 

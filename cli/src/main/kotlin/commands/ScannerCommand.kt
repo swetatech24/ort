@@ -47,12 +47,14 @@ import org.ossreviewtoolkit.cli.GlobalOptions
 import org.ossreviewtoolkit.cli.SeverityStats
 import org.ossreviewtoolkit.cli.concludeSeverityStats
 import org.ossreviewtoolkit.cli.utils.OPTION_GROUP_INPUT
+import org.ossreviewtoolkit.cli.utils.configurationGroup
 import org.ossreviewtoolkit.cli.utils.outputGroup
 import org.ossreviewtoolkit.cli.utils.readOrtResult
 import org.ossreviewtoolkit.cli.utils.writeOrtResult
 import org.ossreviewtoolkit.model.FileFormat
 import org.ossreviewtoolkit.model.OrtResult
 import org.ossreviewtoolkit.model.config.OrtConfiguration
+import org.ossreviewtoolkit.model.utils.DefaultResolutionProvider
 import org.ossreviewtoolkit.model.utils.mergeLabels
 import org.ossreviewtoolkit.scanner.LocalScanner
 import org.ossreviewtoolkit.scanner.ScanResultsStorage
@@ -68,7 +70,9 @@ import org.ossreviewtoolkit.scanner.scanners.Licensee
 import org.ossreviewtoolkit.scanner.scanners.scancode.ScanCode
 import org.ossreviewtoolkit.scanner.storages.FileBasedStorage
 import org.ossreviewtoolkit.scanner.storages.SCAN_RESULTS_FILE_NAME
+import org.ossreviewtoolkit.utils.ORT_RESOLUTIONS_FILENAME
 import org.ossreviewtoolkit.utils.expandTilde
+import org.ossreviewtoolkit.utils.ortConfigDirectory
 import org.ossreviewtoolkit.utils.safeMkdirs
 import org.ossreviewtoolkit.utils.storage.LocalFileStorage
 
@@ -133,6 +137,15 @@ class ScannerCommand : CliktCommand(name = "scan", help = "Run external license 
         help = "Do not scan excluded projects or packages. Works only with the '--ort-file' parameter."
     ).flag()
 
+    private val resolutionsFile by option(
+        "--resolutions-file",
+        help = "A file containing issue and rule violation resolutions."
+    ).convert { it.expandTilde() }
+        .file(mustExist = true, canBeFile = true, canBeDir = false, mustBeWritable = false, mustBeReadable = true)
+        .convert { it.absoluteFile.normalize() }
+        .default(ortConfigDirectory.resolve(ORT_RESOLUTIONS_FILENAME))
+        .configurationGroup()
+
     private val experimental by option(
         "--experimental",
         help = "Use a new experimental implementation of the scanner which scans by provenance instead of by " +
@@ -180,7 +193,11 @@ class ScannerCommand : CliktCommand(name = "scan", help = "Run external license 
             throw ProgramResult(1)
         }
 
-        val severityStats = SeverityStats.createFromIssues(scanResults.collectIssues().flatMap { it.value })
+        val resolutionProvider = DefaultResolutionProvider.create(ortResult, resolutionsFile)
+        val (resolvedIssues, unresolvedIssues) =
+            scanResults.collectIssues().flatMap { it.value }.partition { resolutionProvider.isResolved(it) }
+        val severityStats = SeverityStats.createFromIssues(resolvedIssues, unresolvedIssues)
+
         concludeSeverityStats(severityStats, config.severeIssueThreshold, 2)
     }
 
