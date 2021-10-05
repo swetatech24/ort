@@ -70,4 +70,10 @@ class DefaultResolutionProvider : ResolutionProvider {
 
         return Resolutions(issueResolutions, ruleViolationResolutions)
     }
+
+    override fun isResolved(issue: OrtIssue) = getIssueResolutionsFor(issue).isNotEmpty()
+
+    override fun isResolved(violation: RuleViolation) = getRuleViolationResolutionsFor(violation).isNotEmpty()
+
+    override fun isResolved(vulnerability: Vulnerability) = getVulnerabilityResolutionsFor(vulnerability).isNotEmpty()
 }
