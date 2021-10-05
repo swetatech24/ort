@@ -20,13 +20,14 @@
 
 package org.ossreviewtoolkit.model.utils
 
+import java.io.File
+
 import org.ossreviewtoolkit.model.OrtIssue
 import org.ossreviewtoolkit.model.OrtResult
 import org.ossreviewtoolkit.model.RuleViolation
 import org.ossreviewtoolkit.model.Vulnerability
 import org.ossreviewtoolkit.model.config.Resolutions
 import org.ossreviewtoolkit.model.readValue
-import java.io.File
 
 /**
  * A provider of previously added resolutions for [OrtIssue]s and [RuleViolation]s.
